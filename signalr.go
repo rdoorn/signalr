@@ -16,8 +16,9 @@ import (
 	"time"
 
 	"github.com/carterjones/helpers/trace"
-	"github.com/carterjones/signalr/hubs"
-	"github.com/gorilla/websocket"
+	scraper "github.com/rdoorn/go-cloudflare-scraper"
+	"github.com/rdoorn/signalr/hubs"
+	"github.com/rdoorn/websocket"
 )
 
 const (
@@ -82,6 +83,14 @@ func (c *Client) negotiate() (nr negotiateResponse, err error) {
 	uri := "https://" + c.host +
 		"/signalr/negotiate?clientProtocol=" + c.protocol +
 		"&connectionData=" + c.connectionData
+
+	scraper, err := scraper.NewTransport(http.DefaultTransport)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//client := http.Client{Transport: scraper}
+	http.DefaultTransport = scraper
 
 	for i := 0; i < 5; i++ {
 		var resp *http.Response
