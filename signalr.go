@@ -324,6 +324,7 @@ func (c *Client) Messages() <-chan Message {
 // New creates and initializes a SignalR client. It connects to the host and
 // performs the websocket initialization routines that are part of the SignalR
 // specification.
+/*
 func New(host, protocol, connectionData string) (c Client) {
 	err := c.init(host, protocol, connectionData)
 	if err != nil {
@@ -332,6 +333,26 @@ func New(host, protocol, connectionData string) (c Client) {
 	}
 
 	go c.readMessages()
+
+	return
+}
+*/
+func (c *Client) ConnectLoop(host, protocol, connectionData string) {
+	for {
+		err := c.init(host, protocol, connectionData)
+		if err != nil {
+			trace.Error(err)
+			return
+		}
+
+		c.readMessages()
+	}
+}
+
+func New(host, protocol, connectionData string) (c Client) {
+
+	go c.ConnectLoop(host, protocol, connectionData)
+	time.Sleep(10 * time.Second)
 
 	return
 }
