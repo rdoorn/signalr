@@ -342,7 +342,6 @@ func (c *Client) ConnectLoop(host, protocol, connectionData string) {
 		err := c.init(host, protocol, connectionData)
 		if err != nil {
 			trace.Error(err)
-			return
 		}
 
 		c.readMessages()
