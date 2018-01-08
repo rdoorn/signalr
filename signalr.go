@@ -169,6 +169,7 @@ func (c *Client) connect(nr negotiateResponse) (conn *websocket.Conn, err error)
 }
 
 func (c *Client) start(nr negotiateResponse, conn *websocket.Conn) (err error) {
+	fmt.Println("start conn")
 	path := nr.URL +
 		"/start?transport=webSockets&clientProtocol=" + c.protocol +
 		"&connectionToken=" + nr.connectionTokenEscaped() +
@@ -208,6 +209,7 @@ func (c *Client) start(nr negotiateResponse, conn *websocket.Conn) (err error) {
 		return
 	}
 
+	fmt.Println("start read messages on new conn")
 	// Wait for the init message.
 	t, p, err := conn.ReadMessage()
 	if err != nil {
@@ -238,6 +240,7 @@ func (c *Client) start(nr negotiateResponse, conn *websocket.Conn) (err error) {
 
 	// Since we got to this point, the connection is successful. So we set
 	// the connection for the client.
+	fmt.Println("conn is SET - return")
 	c.conn = conn
 	return
 }
@@ -252,28 +255,27 @@ func (c *Client) start(nr negotiateResponse, conn *websocket.Conn) (err error) {
 // }
 
 func (c *Client) init(host, protocol, connectionData string) (err error) {
-	c.host = host
-	c.protocol = protocol
-	c.setConnectionData(connectionData)
-	c.messages = make(chan Message)
-
+	fmt.Println("Start init")
 	nr, err := c.negotiate()
 	if err != nil {
 		trace.Error(err)
 		return
 	}
 
+	fmt.Println("init connect")
 	conn, err := c.connect(nr)
 	if err != nil {
 		trace.Error(err)
 		return
 	}
 
+	fmt.Println("init start")
 	err = c.start(nr, conn)
 	return
 }
 
 func (c *Client) readMessages() {
+	fmt.Println("reading message")
 	for {
 		trace.DebugMessage("[signalR.readMessages] Waiting for message...")
 
@@ -318,6 +320,7 @@ func (c *Client) Send(m hubs.ClientMsg) (err error) {
 
 // Messages returns the channel that receives persistent connection messages.
 func (c *Client) Messages() <-chan Message {
+	trace.DebugMessage("[signalR.Message] Rreturn message ")
 	return c.messages
 }
 
@@ -337,20 +340,29 @@ func New(host, protocol, connectionData string) (c Client) {
 	return
 }
 */
-func (c *Client) ConnectLoop(host, protocol, connectionData string) {
+func (c *Client) ConnectLoop(host string, protocol string, connectionData string, reconnect chan bool) {
 	for {
+		fmt.Printf("Initialize new connection\n")
 		err := c.init(host, protocol, connectionData)
 		if err != nil {
 			trace.Error(err)
 		}
+		reconnect <- true
 
+		fmt.Printf("Reading messages of new connection\n")
 		c.readMessages()
+		fmt.Printf("Reading failed, re-loop in 10\n")
+		time.Sleep(10 * time.Second)
 	}
 }
 
-func New(host, protocol, connectionData string) (c Client) {
+func New(host string, protocol string, connectionData string, reconnect chan bool) (c Client) {
+	c.host = host
+	c.protocol = protocol
+	c.setConnectionData(connectionData)
+	c.messages = make(chan Message)
 
-	go c.ConnectLoop(host, protocol, connectionData)
+	go c.ConnectLoop(host, protocol, connectionData, reconnect)
 	time.Sleep(10 * time.Second)
 
 	return
